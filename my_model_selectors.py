@@ -111,7 +111,7 @@ class SelectorCV(ModelSelector):
         best_model = None
 
         for num in range(self.min_n_components, self.max_n_components + 1):
-            scores_of_models = []
+            scores_of_model = []
 
             for cv_train_idx, cv_test_idx in split_method.split(self.sequences):
                 train_xs, train_lengths = combine_sequences(cv_train_idx, self.sequences)
@@ -119,9 +119,9 @@ class SelectorCV(ModelSelector):
                 model = GaussianHMM(n_components=num, covariance_type="diag",
                                     n_iter=1000, random_state=self.random_state, verbose=False).fit(train_xs, train_lengths)
                 logL = model.score(test_xs, test_lengths)
-                scores_of_models.append(logL)
+                scores_of_model.append(logL)
 
-            avg_score = np.mean(scores_of_models)
+            avg_score = np.mean(scores_of_model)
 
             if avg_score > best_score:
                 best_score = avg_score
