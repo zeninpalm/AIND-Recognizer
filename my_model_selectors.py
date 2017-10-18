@@ -106,4 +106,25 @@ class SelectorCV(ModelSelector):
         warnings.filterwarnings("ignore", category=DeprecationWarning)
 
         # TODO implement model selection using CV
-        raise NotImplementedError
+        split_method = KFold()
+        best_score = float('-inf')
+        best_model = None
+
+        for num in range(self.min_n_components, self.max_n_components + 1):
+            scores_of_models = []
+
+            for cv_train_idx, cv_test_idx in split_method.split(self.sequences):
+                train_xs, train_lengths = combine_sequences(cv_train_idx, self.sequences)
+                test_xs, test_lengths = combine_sequences()
+                model = GaussianHMM(n_components=num, covariance_type="diag",
+                                    n_iter=1000, random_state=self.random_state, verbose=False).fit(train_xs, train_lengths)
+                logL = model.score(test_xs, test_lengths)
+                scores_of_models.append(logL)
+
+            avg_score = np.mean(scores_of_models)
+
+            if avg_score > best_score:
+                best_score = avg_score
+                best_model = model
+
+        return best_model
