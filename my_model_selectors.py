@@ -77,7 +77,25 @@ class SelectorBIC(ModelSelector):
         warnings.filterwarnings("ignore", category=DeprecationWarning)
 
         # TODO implement model selection based on BIC scores
-        raise NotImplementedError
+        best_score = float('inf')
+        best_model = None
+
+        for num in range(self.min_n_components, self.max_n_components + 1):
+            try:
+                model = self.base_model(num)
+                log_likehood = model.score(self.X, self.lengths)
+                p = num**2 + 2*num*model.n_features + num - 1
+                N = self.X.shape[0]
+                bic_score = -2 * log_likehood + p * np.log(N)
+
+                if bic_score < best_score:
+                    best_score = bic_score
+                    best_model = model
+            except:
+                if self.verbose:
+                    print("failure on {} with {} states".format(self.this_word, num))
+
+        return best_model
 
 
 class SelectorDIC(ModelSelector):
@@ -94,7 +112,28 @@ class SelectorDIC(ModelSelector):
         warnings.filterwarnings("ignore", category=DeprecationWarning)
 
         # TODO implement model selection based on DIC scores
-        raise NotImplementedError
+        best_score = float('-inf')
+        best_model = None
+        words = [v for k, v in self.hwords.items() if k != self.this_word]
+
+        for num in range(self.min_n_components, self.max_n_components + 1):
+            try:
+                model = self.base_model(num)
+                log_likehood = model.score(self.X, self.lengths)
+
+                words_log_likehood = 0
+                for word in words:
+                    words_log_likehood += model.score(word[0], word[1])
+                score = log_likehood - words_log_likehood / len(words)
+
+                if score > best_score:
+                    best_score = score
+                    best_model = model
+            except:
+                if self.verbose:
+                    print("failure on {} with {} states".format(self.this_word, num))
+
+        return best_model
 
 
 class SelectorCV(ModelSelector):
@@ -106,25 +145,36 @@ class SelectorCV(ModelSelector):
         warnings.filterwarnings("ignore", category=DeprecationWarning)
 
         # TODO implement model selection using CV
-        split_method = KFold()
+        splits_count = 3
         best_score = float('-inf')
         best_model = None
+        current_model = None
 
         for num in range(self.min_n_components, self.max_n_components + 1):
-            scores_of_model = []
+            try:
+                split_method = KFold()
 
-            for cv_train_idx, cv_test_idx in split_method.split(self.sequences):
-                train_xs, train_lengths = combine_sequences(cv_train_idx, self.sequences)
-                test_xs, test_lengths = combine_sequences()
-                model = GaussianHMM(n_components=num, covariance_type="diag",
-                                    n_iter=1000, random_state=self.random_state, verbose=False).fit(train_xs, train_lengths)
-                logL = model.score(test_xs, test_lengths)
-                scores_of_model.append(logL)
+                if len(self.sequences) < splits_count:
+                    split_method = KFold(n_splits=len(self.sequences))
 
-            avg_score = np.mean(scores_of_model)
+                likehoods = []
 
-            if avg_score > best_score:
-                best_score = avg_score
-                best_model = model
+                for cv_train_idx, cv_test_idx in split_method.split(self.sequences):
+                    train_xs, train_lengths = combine_sequences(cv_train_idx, self.sequences)
+                    test_xs, test_lengths = combine_sequences(cv_test_idx, self.sequences)
+                    current_model = GaussianHMM(n_components=num, covariance_type="diag",
+                                                n_iter=1000, random_state=self.random_state,
+                                                verbose=False).fit(train_xs, train_lengths)
+                    log_likehood = current_model.score(test_xs, test_lengths)
+                    likehoods.append(log_likehood)
+
+                avg_score = np.mean(likehoods)
+
+                if avg_score > best_score:
+                    best_score = avg_score
+                    best_model = current_model
+            except:
+                if self.verbose:
+                    print("failure on {} with {} states".format(self.this_word, num))
 
         return best_model
