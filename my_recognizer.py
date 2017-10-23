@@ -44,5 +44,4 @@ def recognize(models: dict, test_set: SinglesData):
         probabilities.append(probability_dict)
         guesses.append(best_guess)
 
-    # return probabilities, guesses
     return probabilities, guesses
