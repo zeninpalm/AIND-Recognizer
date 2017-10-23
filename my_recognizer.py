@@ -22,26 +22,27 @@ def recognize(models: dict, test_set: SinglesData):
     guesses = []
     # TODO implement the recognizer
 
-    sequences = list(test_set.get_all_Xlengths().values())
-    guess = ''
+    Xlengths = test_set.get_all_Xlengths()
+    for seq in test_set.get_all_sequences():
 
-    for X, length in sequences:
-        best_log_likehood = float('inf')
-        prob = {}
+        best_logL = float("-inf")
+        best_guess = None
+        probability_dict = {}
+        X, lengths = Xlengths[seq]
 
         for word, model in models.items():
             try:
-                log_likehood = model.score(X, length)
+                logL = model.score(X, lengths)
             except:
-                log_likehood = float("-inf")
+                logL = float("-inf")
 
-            prob[word] = log_likehood
+            probability_dict[word] = logL
+            if logL > best_logL:
+                best_logL = logL
+                best_guess = word
 
-            if log_likehood > best_log_likehood:
-                best_log_likehood = log_likehood
-                guess = word
+        probabilities.append(probability_dict)
+        guesses.append(best_guess)
 
-        probabilities.append(prob)
-        guesses.append(guess)
-
+    # return probabilities, guesses
     return probabilities, guesses
